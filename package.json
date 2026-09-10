@@ -1,0 +1,26 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -n \"API,WEB,ML\" -c \"blue,green,magenta\" \"pnpm run dev:api\" \"pnpm run dev:web\" \"pnpm run dev:ml\"",
+    "dev:docker": "docker compose up -d db redis && concurrently \"pnpm run dev:api\" \"pnpm run dev:web\" \"pnpm run dev:ml\"",
+    "dev:api": "cd artifacts/api-server && export PORT=5001 && pnpm run dev",
+    "dev:web": "cd artifacts/streamflix && export PORT=5173 && pnpm run dev",
+    "dev:ml": "cd artifacts/recommender-service && ./venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000",
+
+    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "prettier": "^3.8.4",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
+  }
+}

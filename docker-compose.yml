@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-mediahub}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  recommender:
+    build: ./artifacts/recommender-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@db:5432/mediahub}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  api-server:
+    build: 
+      context: .
+      dockerfile: artifacts/api-server/Dockerfile
+    ports:
+      - "5001:5000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@db:5432/mediahub}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - RECOMMENDER_URL=${RECOMMENDER_URL:-http://recommender:8000}
+      - JWT_SECRET=${JWT_SECRET:-streamflix-secret-key}
+    depends_on:
+      db:
+        condition: service_healthy
+      recommender:
+        condition: service_started
+
+  streamflix:
+    build: 
+      context: .
+      dockerfile: artifacts/streamflix/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:5001}
+    depends_on:
+      - api-server
+
+volumes:
+  pgdata:

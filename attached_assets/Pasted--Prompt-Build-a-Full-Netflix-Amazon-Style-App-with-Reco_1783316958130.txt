@@ -1,0 +1,102 @@
+# Prompt: Build a Full Netflix/Amazon-Style App with Recommendation Engine
+
+Copy everything below into your AI coding assistant (Claude Code, Cursor, etc.) as your starting instruction.
+
+---
+
+## THE PROMPT
+
+I want to build a **full-stack streaming/e-commerce style web app** (like Netflix + Amazon hybrid) with a **real personalized recommendation system**, not a fake/random one. Build it end-to-end, production-quality, with clean architecture.
+
+### 1. Tech Stack
+- **Frontend:** React (Vite) + TypeScript + Tailwind CSS
+- **Backend:** Node.js + Express (or FastAPI if Python is preferred)
+- **Database:** PostgreSQL (relational data: users, items, interactions) + Redis (caching hot recommendations/sessions)
+- **Auth:** JWT-based auth with refresh tokens, bcrypt password hashing
+- **Recommendation Engine:** Python microservice (scikit-learn / implicit / LightFM) OR a Node-based collaborative filtering module if staying single-language
+- **Search:** PostgreSQL full-text search to start (upgradeable to Elasticsearch/Meilisearch later)
+- **Infra:** Docker Compose for local dev (frontend, backend, db, redis, recommender service)
+
+### 2. Core Pages/Screens
+1. **Landing/Home page** — hero banner + horizontally scrolling rows ("Trending Now", "Because You Watched X", "Top Picks for You", "New Releases", category rows)
+2. **Login / Signup** — email+password, form validation, session persistence
+3. **Search page** — instant search-as-you-type, filters (genre/category, year, rating, price range)
+4. **Item detail page** — title, description, cast/specs, rating, "More Like This" row, add to watchlist/cart, reviews
+5. **Watchlist / Cart / My List**
+6. **User Profile** — viewing/purchase history, preferences, multiple profiles (Netflix-style) optional
+7. **Admin dashboard** (basic) — add/edit catalog items, view analytics
+
+### 3. Data Model (minimum viable schema)
+- `users` (id, email, password_hash, created_at, preferences JSON)
+- `items` (id, title, description, genres[], tags[], price/rating, release_date, metadata JSON, embedding_vector)
+- `interactions` (user_id, item_id, event_type: view/click/purchase/watch/rate, rating (nullable), timestamp, watch_duration)
+- `sessions` (for auth)
+- `reviews` (user_id, item_id, rating, comment)
+
+### 4. Recommendation System — build this properly, in layers
+
+**Layer 1 — Popularity/Trending (cold start, no login needed)**
+- Rank items by recent interaction velocity (views/purchases in last 24–72h), weighted by recency decay.
+
+**Layer 2 — Content-Based Filtering**
+- Represent each item as a feature vector (genres, tags, description embeddings via TF-IDF or sentence-transformers).
+- For a user, build a profile vector = weighted average of vectors of items they've interacted with (higher weight for purchases/completions vs. mere views).
+- Recommend items with highest cosine similarity to the user profile, excluding already-seen items.
+
+**Layer 3 — Collaborative Filtering**
+- Build a user-item interaction matrix (implicit feedback: views/purchases as positive signals).
+- Use matrix factorization (ALS via the `implicit` library, or LightFM for hybrid) to learn latent factors.
+- Generate "users who liked this also liked" and personalized top-N recommendations.
+
+**Layer 4 — Hybrid Blend**
+- Combine content-based + collaborative scores (weighted blend, tunable coefficients).
+- For new users: rely on content-based + popularity until enough interaction data exists (cold-start fallback).
+- For new items: rely on content-based similarity until enough interaction data accumulates.
+
+**Layer 5 — Contextual Rows (how Netflix actually surfaces it)**
+- "Because you watched/bought X" → items most similar to a specific recent interaction.
+- "Top picks for you" → top-N from the hybrid personalized model.
+- "Trending in [genre]" → popularity model filtered by category.
+- Re-rank each row to diversify genres so it doesn't feel repetitive.
+
+**Serving:**
+- Precompute recommendations in a nightly batch job (store in Redis/DB) for scale.
+- Real-time re-ranking layer that adjusts based on the current session's clicks (lightweight, e.g. boost same-genre items after 2+ clicks in a session).
+
+### 5. API Endpoints (example)
+- `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`
+- `GET /items`, `GET /items/:id`, `GET /items/search?q=`
+- `GET /recommendations/home` (personalized rows)
+- `GET /recommendations/similar/:itemId`
+- `POST /interactions` (log view/click/purchase/rating)
+- `GET /watchlist`, `POST /watchlist/:itemId`
+- `GET /admin/analytics`
+
+### 6. Build Order (tell the AI to do it in this sequence)
+1. Scaffold project structure + Docker Compose setup
+2. Database schema + migrations + seed script with sample catalog (movies or products) and synthetic interaction data
+3. Auth (signup/login/JWT) end-to-end
+4. Catalog browsing + search + item detail pages
+5. Interaction logging (every view/click/purchase writes to `interactions`)
+6. Recommendation engine v1: popularity + content-based (works immediately, no ML training needed)
+7. Recommendation engine v2: collaborative filtering trained on interaction data, blended with v1
+8. Personalized home page wiring it all together into rows
+9. Watchlist/cart + reviews
+10. Polish UI (Netflix-style dark theme, hover previews, smooth carousels)
+11. Basic admin dashboard + analytics
+
+### 7. Non-Functional Requirements
+- Recommendations should update as the user interacts (not static after first load)
+- Handle cold start gracefully (new users/new items still get sensible recommendations)
+- Cache personalized recommendations (Redis) with a short TTL to avoid recomputing on every request
+- Include seed/synthetic data generation script so the recommendation system has enough interactions to actually demonstrate learning
+- Include a short README explaining how the recommendation pipeline works and how to retrain it
+
+Build this as a working, runnable project — not pseudocode. Start with project scaffolding and the database schema, then work through the build order above one step at a time, showing me the code at each stage.
+
+---
+
+## Tips for using this prompt
+- If your target tool has file/output limits, paste the prompt but ask it to do **only step 1-3 first**, then continue with "now do step 4" etc. — this avoids truncated output on a project this large.
+- If you don't need real ML, tell it to skip Layer 3 (collaborative filtering) and just use content-based + popularity — that alone looks and feels very "Netflix-like" and is much faster to build.
+- Swap "movies" for "products" (or keep both) depending on whether you want Netflix-style or Amazon-style catalog.

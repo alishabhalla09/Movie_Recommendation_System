@@ -1,0 +1,1369 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: StreamFlix API - Netflix-style streaming & movie discovery platform
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication
+  - name: items
+    description: Catalog items
+  - name: recommendations
+    description: Personalized recommendations
+  - name: interactions
+    description: User interactions
+  - name: watchlist
+    description: User watchlist
+  - name: watch-progress
+    description: User watch progress & continue watching
+  - name: reviews
+    description: Item reviews
+  - name: search
+    description: Search
+  - name: admin
+    description: Admin operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ───────────────────────────────────────────────────────────────────
+
+  /auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── ITEMS ──────────────────────────────────────────────────────────────────
+
+  /items:
+    get:
+      operationId: listItems
+      tags: [items]
+      summary: List catalog items with optional filtering
+      parameters:
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [trending, popular, rating, new, releaseYear]
+      responses:
+        "200":
+          description: List of items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemsPage"
+
+  /items/trending:
+    get:
+      operationId: getTrending
+      tags: [items]
+      summary: Get trending items by recent interaction velocity
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: genre
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Trending items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /items/popular:
+    get:
+      operationId: getPopular
+      tags: [items]
+      summary: Get top popular items
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: genre
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Popular items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /items/new-releases:
+    get:
+      operationId: getNewReleases
+      tags: [items]
+      summary: Get recently added or released items
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: New releases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /items/genres:
+    get:
+      operationId: listGenres
+      tags: [items]
+      summary: List all available genres
+      responses:
+        "200":
+          description: Genre list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /items/genre/{genre}:
+    get:
+      operationId: getItemsByGenre
+      tags: [items]
+      summary: Get movies in a specific genre
+      parameters:
+        - name: genre
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [popular, rating, new, trending]
+            default: popular
+      responses:
+        "200":
+          description: Genre items page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemsPage"
+
+  /items/{id}:
+    get:
+      operationId: getItem
+      tags: [items]
+      summary: Get a single item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /items/{id}/trailer:
+    get:
+      operationId: getItemTrailer
+      tags: [items]
+      summary: Get trailer information for an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trailer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrailerInfo"
+        "404":
+          description: Trailer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Admin-only item CRUD
+  /admin/items:
+    post:
+      operationId: createItem
+      tags: [admin]
+      summary: Create a catalog item (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  /admin/items/{id}:
+    patch:
+      operationId: updateItem
+      tags: [admin]
+      summary: Update a catalog item (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+    delete:
+      operationId: deleteItem
+      tags: [admin]
+      summary: Delete a catalog item (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── WATCH PROGRESS ─────────────────────────────────────────────────────────
+
+  /watch-progress/continue-watching:
+    get:
+      operationId: getContinueWatching
+      tags: [watch-progress]
+      summary: Get items the user is currently watching
+      responses:
+        "200":
+          description: Continue watching list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContinueWatchingItem"
+
+  /watch-progress/{itemId}:
+    get:
+      operationId: getWatchProgress
+      tags: [watch-progress]
+      summary: Get watch progress for a movie
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Watch progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProgress"
+    post:
+      operationId: saveWatchProgress
+      tags: [watch-progress]
+      summary: Save or update watch progress
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchProgressInput"
+      responses:
+        "200":
+          description: Saved watch progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProgress"
+
+  # ─── SEARCH ─────────────────────────────────────────────────────────────────
+
+  /search:
+    get:
+      operationId: searchItems
+      tags: [search]
+      summary: Full-text search with filters across title, cast, director, overview, genres
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: minRating
+          in: query
+          schema:
+            type: number
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  # ─── RECOMMENDATIONS ────────────────────────────────────────────────────────
+
+  /recommendations/home:
+    get:
+      operationId: getHomeRecommendations
+      tags: [recommendations]
+      summary: Get personalized home page rows
+      responses:
+        "200":
+          description: Recommendation rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecommendationRow"
+
+  /recommendations/similar/{itemId}:
+    get:
+      operationId: similarItems
+      tags: [recommendations]
+      summary: Get items similar to a given item (content-based / ALS hybrid)
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: Similar items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /recommendations/because-you-watched:
+    get:
+      operationId: getBecauseYouWatched
+      tags: [recommendations]
+      summary: Get "Because you watched X" rows
+      responses:
+        "200":
+          description: Because you watched rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecommendationRow"
+
+  /recommendations/top-picks:
+    get:
+      operationId: getTopPicks
+      tags: [recommendations]
+      summary: Get personalized top picks for current user
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Top picks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  # ─── INTERACTIONS ────────────────────────────────────────────────────────────
+
+  /interactions:
+    post:
+      operationId: logInteraction
+      tags: [interactions]
+      summary: Log a user interaction (impression, view, click, play, rate, watchlist, etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InteractionInput"
+      responses:
+        "201":
+          description: Interaction logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /interactions/history:
+    get:
+      operationId: getInteractionHistory
+      tags: [interactions]
+      summary: Get user's viewing/interaction history
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Interaction history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InteractionWithItem"
+
+  # ─── WATCHLIST ───────────────────────────────────────────────────────────────
+
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [watchlist]
+      summary: Get user's watchlist
+      responses:
+        "200":
+          description: Watchlist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /watchlist/{itemId}:
+    post:
+      operationId: addToWatchlist
+      tags: [watchlist]
+      summary: Add item to watchlist
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Already in watchlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeFromWatchlist
+      tags: [watchlist]
+      summary: Remove item from watchlist
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /watchlist/check/{itemId}:
+    get:
+      operationId: checkWatchlist
+      tags: [watchlist]
+      summary: Check if item is in watchlist
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Watchlist status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistStatus"
+
+  # ─── REVIEWS ─────────────────────────────────────────────────────────────────
+
+  /reviews/{itemId}:
+    get:
+      operationId: getReviews
+      tags: [reviews]
+      summary: Get reviews for an item
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Create or update a review
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  # ─── ADMIN ───────────────────────────────────────────────────────────────────
+
+  /admin/analytics:
+    get:
+      operationId: getAnalytics
+      tags: [admin]
+      summary: Get platform analytics
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analytics"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Quick stats for admin dashboard
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/tmdb/import:
+    post:
+      operationId: importTmdbMovies
+      tags: [admin]
+      summary: Batch import movie metadata & trailers from TMDB API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TmdbImportInput"
+      responses:
+        "200":
+          description: Import results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TmdbImportResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/tmdb/refresh/{id}:
+    post:
+      operationId: refreshTmdbMovie
+      tags: [admin]
+      summary: Refresh metadata and trailer for a single movie from TMDB
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  /admin/recommender/train:
+    post:
+      operationId: triggerRecommenderTraining
+      tags: [admin]
+      summary: Trigger ML recommendation model retraining
+      responses:
+        "200":
+          description: Training initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+# ─── SCHEMAS ─────────────────────────────────────────────────────────────────
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    # ── Auth ─────────────────────────────────────────────────────────────────
+
+    AuthInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    User:
+      type: object
+      required: [id, email, createdAt, isAdmin]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        isAdmin:
+          type: boolean
+        hasOnboarded:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Items ─────────────────────────────────────────────────────────────────
+
+    Item:
+      type: object
+      required: [id, title, description, genres, tags, rating, releaseYear, createdAt]
+      properties:
+        id:
+          type: integer
+        tmdbId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        tagline:
+          type: ["string", "null"]
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        voteCount:
+          type: ["integer", "null"]
+        popularity:
+          type: ["number", "null"]
+        releaseYear:
+          type: integer
+        releaseDate:
+          type: ["string", "null"]
+        posterUrl:
+          type: ["string", "null"]
+        backdropUrl:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        trailerUrl:
+          type: ["string", "null"]
+        trailerKey:
+          type: ["string", "null"]
+        trailerSite:
+          type: ["string", "null"]
+        trailerName:
+          type: ["string", "null"]
+        duration:
+          type: ["integer", "null"]
+        director:
+          type: ["string", "null"]
+        cast:
+          type: array
+          items:
+            type: string
+        originalLanguage:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [movie, series, documentary]
+        interactionCount:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ItemInput:
+      type: object
+      required: [title, description, genres, tags, rating, releaseYear, type]
+      properties:
+        tmdbId:
+          type: integer
+        title:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        voteCount:
+          type: integer
+        popularity:
+          type: number
+        releaseYear:
+          type: integer
+        releaseDate:
+          type: string
+        posterUrl:
+          type: string
+        backdropUrl:
+          type: string
+        logoUrl:
+          type: string
+        trailerUrl:
+          type: string
+        trailerKey:
+          type: string
+        trailerSite:
+          type: string
+        trailerName:
+          type: string
+        duration:
+          type: integer
+        director:
+          type: string
+        cast:
+          type: array
+          items:
+            type: string
+        originalLanguage:
+          type: string
+        country:
+          type: string
+        type:
+          type: string
+          enum: [movie, series, documentary]
+
+    ItemUpdate:
+      type: object
+      properties:
+        tmdbId:
+          type: integer
+        title:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        voteCount:
+          type: integer
+        popularity:
+          type: number
+        releaseYear:
+          type: integer
+        releaseDate:
+          type: string
+        posterUrl:
+          type: string
+        backdropUrl:
+          type: string
+        logoUrl:
+          type: string
+        trailerUrl:
+          type: string
+        trailerKey:
+          type: string
+        trailerSite:
+          type: string
+        trailerName:
+          type: string
+        duration:
+          type: integer
+        director:
+          type: string
+        cast:
+          type: array
+          items:
+            type: string
+        originalLanguage:
+          type: string
+        country:
+          type: string
+        type:
+          type: string
+          enum: [movie, series, documentary]
+
+    ItemsPage:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    TrailerInfo:
+      type: object
+      required: [available]
+      properties:
+        available:
+          type: boolean
+        key:
+          type: ["string", "null"]
+        site:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        type:
+          type: ["string", "null"]
+        embedUrl:
+          type: ["string", "null"]
+
+    # ── Watch Progress ────────────────────────────────────────────────────────
+
+    WatchProgress:
+      type: object
+      required: [itemId, positionSeconds, durationSeconds, percentage, completed]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        itemId:
+          type: integer
+        positionSeconds:
+          type: integer
+        durationSeconds:
+          type: integer
+        percentage:
+          type: number
+        completed:
+          type: boolean
+        lastWatchedAt:
+          type: string
+          format: date-time
+
+    WatchProgressInput:
+      type: object
+      required: [positionSeconds, durationSeconds]
+      properties:
+        positionSeconds:
+          type: integer
+        durationSeconds:
+          type: integer
+
+    ContinueWatchingItem:
+      type: object
+      required: [item, progress]
+      properties:
+        item:
+          $ref: "#/components/schemas/Item"
+        progress:
+          $ref: "#/components/schemas/WatchProgress"
+
+    # ── Recommendations ───────────────────────────────────────────────────────
+
+    RecommendationRow:
+      type: object
+      required: [title, reason, items]
+      properties:
+        title:
+          type: string
+        reason:
+          type: string
+          enum: [trending, popular, new_releases, because_you_watched, top_picks, genre_row, content_based, continue_watching]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        sourceItemTitle:
+          type: ["string", "null"]
+
+    # ── Interactions ──────────────────────────────────────────────────────────
+
+    InteractionInput:
+      type: object
+      required: [itemId, eventType]
+      properties:
+        itemId:
+          type: integer
+        eventType:
+          type: string
+        rating:
+          type: ["number", "null"]
+        watchDuration:
+          type: ["integer", "null"]
+        metadata:
+          type: ["string", "null"]
+
+    InteractionWithItem:
+      type: object
+      required: [id, itemId, eventType, createdAt, item]
+      properties:
+        id:
+          type: integer
+        itemId:
+          type: integer
+        eventType:
+          type: string
+        rating:
+          type: ["number", "null"]
+        watchDuration:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        item:
+          $ref: "#/components/schemas/Item"
+
+    # ── Watchlist ─────────────────────────────────────────────────────────────
+
+    WatchlistStatus:
+      type: object
+      required: [inWatchlist]
+      properties:
+        inWatchlist:
+          type: boolean
+
+    # ── Reviews ───────────────────────────────────────────────────────────────
+
+    ReviewInput:
+      type: object
+      required: [rating]
+      properties:
+        rating:
+          type: number
+          minimum: 1
+          maximum: 10
+        comment:
+          type: string
+
+    Review:
+      type: object
+      required: [id, itemId, userId, rating, createdAt]
+      properties:
+        id:
+          type: integer
+        itemId:
+          type: integer
+        userId:
+          type: integer
+        userEmail:
+          type: ["string", "null"]
+        rating:
+          type: number
+        comment:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Admin & TMDB ──────────────────────────────────────────────────────────
+
+    TmdbImportInput:
+      type: object
+      required: [type, pages]
+      properties:
+        type:
+          type: string
+          enum: [popular, trending, top_rated, now_playing, genre, year]
+        pages:
+          type: integer
+          default: 3
+          minimum: 1
+          maximum: 20
+        genreId:
+          type: integer
+        genreName:
+          type: string
+        year:
+          type: integer
+
+    TmdbImportResponse:
+      type: object
+      required: [message, imported, updated, skipped, failed]
+      properties:
+        message:
+          type: string
+        imported:
+          type: integer
+        updated:
+          type: integer
+        skipped:
+          type: integer
+        failed:
+          type: integer
+        details:
+          type: array
+          items:
+            type: string
+
+    Analytics:
+      type: object
+      required: [totalUsers, totalItems, totalInteractions, topItems, genreDistribution, interactionsByType, recentActivity]
+      properties:
+        totalUsers:
+          type: integer
+        totalItems:
+          type: integer
+        totalInteractions:
+          type: integer
+        topItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+        genreDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenreCount"
+        interactionsByType:
+          type: array
+          items:
+            $ref: "#/components/schemas/InteractionTypeCount"
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentActivityItem"
+
+    AdminStats:
+      type: object
+      required: [totalUsers, totalItems, totalInteractions, totalWatchlistEntries, totalReviews]
+      properties:
+        totalUsers:
+          type: integer
+        totalItems:
+          type: integer
+        totalInteractions:
+          type: integer
+        totalWatchlistEntries:
+          type: integer
+        totalReviews:
+          type: integer
+
+    GenreCount:
+      type: object
+      required: [genre, count]
+      properties:
+        genre:
+          type: string
+        count:
+          type: integer
+
+    InteractionTypeCount:
+      type: object
+      required: [eventType, count]
+      properties:
+        eventType:
+          type: string
+        count:
+          type: integer
+
+    RecentActivityItem:
+      type: object
+      required: [eventType, itemTitle, createdAt]
+      properties:
+        eventType:
+          type: string
+        itemTitle:
+          type: string
+        userEmail:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time

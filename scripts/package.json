@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hello": "tsx ./src/hello.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed": "tsx ./src/seed.ts",
+    "update-posters": "tsx ./src/update-posters.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.5.0",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "catalog:",
+    "csv-parse": "^7.0.1",
+    "csv-parser": "^3.2.1",
+    "node-fetch": "^3.3.2",
+    "tsx": "catalog:"
+  }
+}
