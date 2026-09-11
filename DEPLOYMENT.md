@@ -8,11 +8,71 @@ Bhai, is guide mein tujhe **3 options** bataunga — free se paid tak. Portfolio
 
 | Option | Cost | Difficulty | Best For |
 |--------|------|------------|----------|
+| **Option 0: Vercel (Frontend + Backend)** | 100% Free | ⭐ Very Easy | Serverless Full-Stack + Fast CDN |
 | **Option 1: Railway** | Free ($5 credit/month) | ⭐⭐ Easy | Portfolio + Resume |
 | **Option 2: Render** | Free tier available | ⭐⭐⭐ Medium | Low traffic apps |
 | **Option 3: VPS (DigitalOcean)** | $6/month | ⭐⭐⭐⭐ Hard | Production apps |
 
-> **Recommendation:** B.Tech portfolio ke liye **Railway** best hai — Docker support, free tier, aur sab kuch ek jagah manage hota hai.
+---
+
+## ⚡ Option 0: Vercel (Frontend + Backend Serverless) — 100% Free
+
+StreamFlix is configured with a **Vercel Serverless Function** (`api/index.ts`) and `vercel.json` rewrites so that **both the React frontend and Node.js Express backend deploy together under a single Vercel project with a single URL**.
+
+### 🏗 Architecture on Vercel:
+```
+https://your-project.vercel.app/
+├── /              ──→ React Vite Frontend (Static CDN Build)
+├── /api/*         ──→ Express Backend (Vercel Serverless Function)
+└── Database       ──→ Cloud PostgreSQL (Neon.tech / Supabase / Vercel Postgres - Free)
+```
+
+---
+
+### 📋 Step-by-Step Vercel Deployment
+
+#### Step 1: Create a Free Cloud PostgreSQL Database
+Since Vercel is serverless, you need a cloud-hosted PostgreSQL database (free tier):
+1. Go to **[Neon.tech](https://neon.tech)** (Recommended, 100% free serverless Postgres) or **[Supabase.com](https://supabase.com)**.
+2. Sign up and create a new project called `mediahub`.
+3. Copy your database connection string (`DATABASE_URL`). Example:
+   ```
+   postgresql://user:password@ep-cool-frog-123456.us-east-2.aws.neon.tech/mediahub?sslmode=require
+   ```
+
+#### Step 2: Push Database Schema & Seed Data to Cloud Database
+From your local terminal, push the database schema and movie data to your new cloud database:
+
+```bash
+# 1. Push schema tables to Neon/Supabase database
+DATABASE_URL="your-neon-or-supabase-database-url" pnpm --filter @workspace/db run push-force
+
+# 2. Seed movies & initial data
+DATABASE_URL="your-neon-or-supabase-database-url" pnpm --filter @workspace/scripts run seed
+```
+
+#### Step 3: Push Code to GitHub
+```bash
+git add .
+git commit -m "Configure full-stack Vercel deployment with serverless API and vercel.json"
+git push origin main
+```
+
+#### Step 4: Deploy to Vercel
+1. Go to **[vercel.com](https://vercel.com)** and log in with GitHub.
+2. Click **"Add New..."** → **"Project"**.
+3. Import your GitHub repository (`Python_Movie_Recommendation_System` / `streamflix`).
+4. Keep the **Root Directory** as `./` (Project Root).
+5. In **"Environment Variables"**, add:
+   - `DATABASE_URL` = `your-neon-or-supabase-database-url`
+   - `JWT_SECRET` = `any_secure_random_string_here`
+   - `TMDB_API_KEY` = `16b6647c3bfcd660c7f4841c4e000b1a` (optional, for movie posters/backdrops)
+   - `RECOMMENDER_URL` = (Optional: URL if you deploy the Python ML service on Render/Railway)
+6. Click **"Deploy"**!
+
+🎉 In 1-2 minutes, your live site will be ready at `https://your-app.vercel.app` with both frontend and backend working seamlessly!
+
+---
 
 ---
 
